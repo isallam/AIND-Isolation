@@ -7,12 +7,94 @@ You must test your agent's strength against a set of agents with known
 relative strength using tournament.py and include the results in your report.
 """
 import random
-
+import operator
 
 class Timeout(Exception):
     """Subclass base exception for code clarity."""
     pass
 
+open_book = [(2,2), (2,3), (2,4), (3,2), (3,3), (3,4)]
+
+def pick_good_move(legal_moves):
+    """ Check if we have a good move in the set of legal moves.
+        pick one that is best suitable or return a random one if non
+        exist in the open book
+
+    Parameters
+    ----------
+    legal_moves: a list of legal moves
+
+    returns
+    tuple
+        picked from the list
+
+    """
+
+    to_choose_from = list(set(open_book) & set(legal_moves))
+    if to_choose_from != []:
+        return to_choose_from[random.randint(0, len(to_choose_from) -1)]
+
+    return legal_moves[random.randint(0, len(legal_moves) - 1)]
+
+def open_move_score(game, player):
+    """The basic evaluation function described in lecture that outputs a score
+    equal to the number of moves open for your computer player on the board.
+
+    Parameters
+    ----------
+    game : `isolation.Board`
+        An instance of `isolation.Board` encoding the current state of the
+        game (e.g., player locations and blocked cells).
+
+    player : hashable
+        One of the objects registered by the game object as a valid player.
+        (i.e., `player` should be either game.__player_1__ or
+        game.__player_2__).
+
+    Returns
+    ----------
+    float
+        The heuristic value of the current game state
+    """
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    return float(len(game.get_legal_moves(player)))
+
+
+def improved_score(game, player):
+    """The "Improved" evaluation function discussed in lecture that outputs a
+    score equal to the difference in the number of moves available to the
+    two players.
+
+    Parameters
+    ----------
+    game : `isolation.Board`
+        An instance of `isolation.Board` encoding the current state of the
+        game (e.g., player locations and blocked cells).
+
+    player : hashable
+        One of the objects registered by the game object as a valid player.
+        (i.e., `player` should be either game.__player_1__ or
+        game.__player_2__).
+
+    Returns
+    ----------
+    float
+        The heuristic value of the current game state
+    """
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    own_moves = len(game.get_legal_moves(player))
+    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
+    return float(own_moves - opp_moves)
 
 def custom_score(game, player):
     """Calculate the heuristic value of a game state from the point of view
@@ -37,8 +119,8 @@ def custom_score(game, player):
         The heuristic value of the current game state to the specified player.
     """
 
-    # TODO: finish this function!
-    raise NotImplementedError
+    # try the improved_score() from the sample_players code base
+    return improved_score(game, player)
 
 
 class CustomPlayer:
@@ -118,17 +200,26 @@ class CustomPlayer:
 
         self.time_left = time_left
 
-        # TODO: finish this function!
-
         # Perform any required initializations, including selecting an initial
         # move from the game board (i.e., an opening book), or returning
         # immediately if there are no legal moves
+
+        # Check the open book again the legal_moves and keep one handy
+        # for now we'll just pick a random one from the available moves.
+        best_move = pick_good_move(legal_moves)
+        if game.move_count <= 1:
+            return best_move
 
         try:
             # The search method call (alpha beta or minimax) should happen in
             # here in order to avoid timeout. The try/except block will
             # automatically catch the exception raised by the search method
             # when the timer gets close to expiring
+            if self.iterative:
+                for depth in range(1, 9):
+                    _, best_move = getattr(self, self.method)(game, depth)
+            else: # no ID
+                _, best_move = getattr(self, self.method)(game, self.search_depth)
             pass
 
         except Timeout:
@@ -136,7 +227,8 @@ class CustomPlayer:
             pass
 
         # Return the best move from the last completed search iteration
-        raise NotImplementedError
+        # print("BestMove: ", best_move)
+        return best_move
 
     def minimax(self, game, depth, maximizing_player=True):
         """Implement the minimax search algorithm as described in the lectures.
@@ -170,10 +262,38 @@ class CustomPlayer:
                 evaluation function directly.
         """
         if self.time_left() < self.TIMER_THRESHOLD:
+            # print("TIMEOUT in minimax()")
             raise Timeout()
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        if game.is_winner(self):
+            return float('+inf'), game.get_legal_moves()
+
+        legal_moves = game.get_legal_moves()
+
+        # check if we reached the required depth or no more moves (terminal node)
+        if (depth == 0) or (not legal_moves):
+            game_score = self.score(game, self)
+            return (game_score, (-1, -1))
+
+        # iterate over every potential game and calculate the best score for the branch
+        good_pick = ()
+        if maximizing_player:
+            good_pick = (float("-inf"), (-1, -1))
+            for move in legal_moves:
+                game_branch = game.forecast_move(move)
+                branch_score, _ = self.minimax(game_branch, depth -1, (not maximizing_player))
+                if branch_score > good_pick[0]:
+                    good_pick = (branch_score, move)
+        else:
+            good_pick = (float("+inf"), (-1, -1))
+            for move in legal_moves:
+                game_branch = game.forecast_move(move)
+                branch_score, _ = self.minimax(game_branch, depth -1, (not maximizing_player))
+                if branch_score < good_pick[0]:
+                    good_pick = (branch_score, move)
+
+        return good_pick
+
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf"), maximizing_player=True):
         """Implement minimax search with alpha-beta pruning as described in the
@@ -216,5 +336,42 @@ class CustomPlayer:
         if self.time_left() < self.TIMER_THRESHOLD:
             raise Timeout()
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        if game.is_winner(self):
+            return float('+inf'), game.get_legal_moves()
+
+        legal_moves = game.get_legal_moves()
+
+        # check if we reached the required depth or no more moves (terminal node)
+        if (depth == 0) or (not legal_moves):
+            game_score = self.score(game, self)
+            return (game_score, (-1, -1))
+
+        good_choice = ()
+        if maximizing_player:
+            best_score = alpha
+            good_choice = (alpha, (-1, -1))
+            for move in legal_moves:
+                game_branch = game.forecast_move(move)
+                branch_score, _ = self.alphabeta(game_branch, depth -1, alpha, beta, (not maximizing_player))
+                if branch_score > best_score:
+                    good_choice = (branch_score, move)
+                    best_score = branch_score
+                if best_score >= beta:
+                    break
+                alpha = max(alpha, best_score)
+
+        else:
+            best_score = beta
+            good_choice = (beta, (-1, -1))
+            for move in legal_moves:
+                game_branch = game.forecast_move(move)
+                branch_score, _ = self.alphabeta(game_branch, depth -1, alpha, beta, (not maximizing_player))
+                if branch_score < best_score:
+                    good_choice = (branch_score, move)
+                    best_score = branch_score
+                if best_score <= alpha:
+                    good_choice = (best_score, move)
+                    break
+                beta = min(beta, best_score)
+
+        return good_choice;
