@@ -209,8 +209,8 @@ def positive_impact_score(game, player):
     opp_player_legal_moves = game.get_legal_moves(game.get_opponent(player))
 
     if game.move_count <= 20:
-        player_better_moves = len(list(set(better_moves) & set(player_legal_moves)))
-        opp_player_better_moves = len(list(set(better_moves) & set(opp_player_legal_moves)))
+        player_better_moves = len(list(set(open_book_level1) & set(player_legal_moves)))
+        opp_player_better_moves = len(list(set(open_book_level1) & set(opp_player_legal_moves)))
         reward = (player_better_moves - opp_player_better_moves)
 
     own_moves = len(player_legal_moves)
@@ -246,25 +246,23 @@ def impact_score(game, player):
         return float("inf")
 
     reward = 0;
-    penalty = 0;
 
     player_legal_moves = game.get_legal_moves(player)
     opp_player_legal_moves = game.get_legal_moves(game.get_opponent(player))
 
-    if game.move_count <= 20:
-        player_better_moves = len(list(set(better_moves) & set(player_legal_moves)))
-        opp_player_better_moves = len(list(set(better_moves) & set(opp_player_legal_moves)))
-        reward = (player_better_moves - opp_player_better_moves)
-    else:
-        # check against the wrose locations
-        player_worse_moves =  len(list(set(worse_moves) & set(player_legal_moves)))
-        opp_player_worse_moves = len(list(set(worse_moves) & set(opp_player_legal_moves)))
-        penalty = opp_player_worse_moves - player_worse_moves
+    num_player_better_moves = len(list(set(open_book_level1) & set(player_legal_moves)))
+    num_opp_player_better_moves = len(list(set(open_book_level1) & set(opp_player_legal_moves)))
+    reward = num_player_better_moves - num_opp_player_better_moves
+
+    # check against the wrose locations
+    player_worse_moves =  len(list(set(corner_spots) & set(player_legal_moves)))
+    opp_player_worse_moves = len(list(set(corner_spots) & set(opp_player_legal_moves)))
+    reward += opp_player_worse_moves - player_worse_moves
 
 
     own_moves = len(player_legal_moves)
     opp_moves = len(opp_player_legal_moves)
-    return float(own_moves - opp_moves + reward + penalty)
+    return float(own_moves - opp_moves + reward)
 
 
 def improved_score_squared(game, player):
@@ -323,7 +321,7 @@ def custom_score(game, player):
     """
 
     # try the improved_score() from the sample_players code base
-    return negative_impact_score(game, player)
+    return impact_score(game, player)
 
 
 class CustomPlayer:
@@ -410,7 +408,7 @@ class CustomPlayer:
         # Check the open book again the legal_moves and keep one handy
         # for now we'll just pick a random one from the available moves.
         best_move = pick_good_move(legal_moves)
-        if game.move_count <= 4:
+        if game.move_count <= 1:
             return best_move
 
         try:
