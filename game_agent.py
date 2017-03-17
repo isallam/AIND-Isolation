@@ -265,6 +265,39 @@ def impact_score(game, player):
     return float(own_moves - opp_moves + reward)
 
 
+def yet_another_score(game, player):
+    """ Based on the "Improved" evaluation function discussed in lecture but this
+    will measure the ratio of the diff over the total legal moves for both
+
+    Parameters
+    ----------
+    game : `isolation.Board`
+        An instance of `isolation.Board` encoding the current state of the
+        game (e.g., player locations and blocked cells).
+
+    player : hashable
+        One of the objects registered by the game object as a valid player.
+        (i.e., `player` should be either game.__player_1__ or
+        game.__player_2__).
+
+    Returns
+    ----------
+    float
+        The heuristic value of the current game state
+    """
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    own_moves = len(game.get_legal_moves(player))
+    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
+
+    return float((own_moves - opp_moves) / (own_moves + opp_moves))
+
+
+
 def improved_score_squared(game, player):
     """ Based on the "Improved" evaluation function discussed in lecture that
     outputs a score equal to the difference in the number of moves available to the
@@ -321,7 +354,7 @@ def custom_score(game, player):
     """
 
     # try the improved_score() from the sample_players code base
-    return impact_score(game, player)
+    return yet_another_score(game, player)
 
 
 class CustomPlayer:
