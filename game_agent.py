@@ -87,7 +87,13 @@ def jaccard_score(game, player):
 
     own_moves = len(player_legal_moves)
     opp_moves = len(opp_player_legal_moves)
-    return float(own_moves - jaccard_index)
+
+    if opp_moves == 0:
+        return float('inf')
+    if own_moves == 0:
+        return float('-inf')
+
+    return (float(own_moves) / float(opp_moves)) + jaccard_index
 
 
 def ratio_score(game, player):
