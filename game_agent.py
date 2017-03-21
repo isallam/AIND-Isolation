@@ -212,7 +212,7 @@ def custom_score(game, player):
     """
 
     # try the improved_score() from the sample_players code base
-    return yet_another_score(game, player)
+    return ratio_score(game, player)
 
 
 class CustomPlayer:
