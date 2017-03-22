@@ -13,14 +13,20 @@ class Timeout(Exception):
     """Subclass base exception for code clarity."""
     pass
 
+# board position that provide the most possible next move, 8 in this case.
 open_book_level1 = [(2,2), (2,3), (2,4), (3,2), (3,3), (3,4)]
+# board position that provide the 6 possible next move.
 open_book_level2 = [(1,2), (1,3), (1,4), (2,1), (2, 5, (3, 1), (3,5), (4,1), (4,5), (5,2), (5,3), (5,4))]
+# board positions that the least favourite since it only provide 2 possible next move
 corner_spots = [(0,0), (0,6), (6,0), (6,6)]
+# board positions that next least since they provide only 3 possible next move
 only_three_options = [(0,1),(0,5), (1,0), (1,6), (5,0), (5,6), (6,1), (6,5)]
 
 better_moves = open_book_level1 + open_book_level2
-worse_moves = corner_spots + only_three_options
+len_better_moves = len(better_moves)
 
+worse_moves = corner_spots + only_three_options
+len_worse_moves = len(worse_moves)
 
 def pick_good_move(legal_moves):
     """ Check if we have a good move in the set of legal moves.
@@ -54,6 +60,8 @@ def pick_good_move(legal_moves):
 def jaccard_score(game, player):
     """ This score measure the jaccard similarity of the player legal moves to
         the opponent player legal moves
+        Jaccard similarity index measure the similarity between two sets
+        http://en.wikipedia.org/wiki/Jaccard_index
 
     Parameters
     ----------
@@ -128,7 +136,7 @@ def ratio_score(game, player):
 
     return float(own_moves) / float(opp_moves)
 
-def yet_another_score(game, player):
+def normalized_score(game, player):
     """ Based on the "Improved" evaluation function discussed in lecture but this
     will measure the ratio of the diff over the total legal moves for both
 
@@ -160,6 +168,64 @@ def yet_another_score(game, player):
         return float('inf')
 
     return float(own_moves - opp_moves) / float(own_moves + opp_moves)
+
+
+def multi_feature_score(game, player):
+    """ Use various features of the game state to determine a score.
+    features used:
+        - number of player moves vs. opponent moves
+        - intersection of the player's legal move set with the good position set
+          and same for the opponenet.
+        - number of empty spaces on the board
+
+    Parameters
+    ----------
+    game : `isolation.Board`
+        An instance of `isolation.Board` encoding the current state of the
+        game (e.g., player locations and blocked cells).
+
+    player : hashable
+        One of the objects registered by the game object as a valid player.
+        (i.e., `player` should be either game.__player_1__ or
+        game.__player_2__).
+
+    Returns
+    ----------
+    float
+        The heuristic value of the current game state
+    """
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    player_legal_moves = game.get_legal_moves(player)
+    opp_player_legal_moves = game.get_legal_moves(game.get_opponent(player))
+
+    own_moves = len(player_legal_moves)
+    opp_moves = len(opp_player_legal_moves)
+    if opp_moves == 0:
+        return float('inf')
+    if own_moves == 0:
+        return float('-inf')
+
+    num_player_better_moves = len(list(set(better_moves) & set(player_legal_moves)))
+    num_player_worse_moves = len(list(set(worse_moves) & set(player_legal_moves)))
+    num_opp_player_better_moves = len(list(set(better_moves) & set(opp_player_legal_moves)))
+    num_opp_player_worse_moves = len(list(set(worse_moves) & set(opp_player_legal_moves)))
+    num_available_spaces = len(game.get_blank_spaces())
+    total_num_better_moves = num_player_better_moves + num_opp_player_better_moves
+    total_num_worse_moves = num_player_worse_moves + num_opp_player_worse_moves
+    weight = 1
+    value = float(own_moves - opp_moves) #/ float(own_moves + opp_moves)
+    if total_num_better_moves != 0:
+        value += float(num_player_better_moves - weight * num_opp_player_better_moves)/total_num_better_moves
+    if total_num_worse_moves != 0:
+        value += float(num_opp_player_worse_moves - weight * num_player_worse_moves)/total_num_worse_moves
+    value += (50 - num_available_spaces) / 100.0
+
+    return value
 
 
 def improved_score_squared(game, player):
@@ -218,7 +284,7 @@ def custom_score(game, player):
     """
 
     # try the improved_score() from the sample_players code base
-    return ratio_score(game, player)
+    return multi_feature_score(game, player)
 
 
 class CustomPlayer:
