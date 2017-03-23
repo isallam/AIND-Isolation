@@ -15,10 +15,15 @@ class Timeout(Exception):
 
 # board position that provide the most possible next move, 8 in this case.
 open_book_level1 = [(2,2), (2,3), (2,4), (3,2), (3,3), (3,4)]
+num_elements_book_level1 = len(open_book_level1)
+
 # board position that provide the 6 possible next move.
 open_book_level2 = [(1,2), (1,3), (1,4), (2,1), (2, 5, (3, 1), (3,5), (4,1), (4,5), (5,2), (5,3), (5,4))]
+
 # board positions that the least favourite since it only provide 2 possible next move
 corner_spots = [(0,0), (0,6), (6,0), (6,6)]
+num_elements_corner_spots = len(corner_spots)
+
 # board positions that next least since they provide only 3 possible next move
 only_three_options = [(0,1),(0,5), (1,0), (1,6), (5,0), (5,6), (6,1), (6,5)]
 
@@ -210,20 +215,19 @@ def multi_feature_score(game, player):
     if own_moves == 0:
         return float('-inf')
 
-    num_player_better_moves = len(list(set(better_moves) & set(player_legal_moves)))
-    num_player_worse_moves = len(list(set(worse_moves) & set(player_legal_moves)))
-    num_opp_player_better_moves = len(list(set(better_moves) & set(opp_player_legal_moves)))
-    num_opp_player_worse_moves = len(list(set(worse_moves) & set(opp_player_legal_moves)))
+    num_player_better_moves = len(list(set(open_book_level1) & set(player_legal_moves)))
+    num_player_worse_moves = len(list(set(corner_spots) & set(player_legal_moves)))
+    num_opp_player_better_moves = len(list(set(open_book_level1) & set(opp_player_legal_moves)))
+    num_opp_player_worse_moves = len(list(set(corner_spots) & set(opp_player_legal_moves)))
     num_available_spaces = len(game.get_blank_spaces())
-    total_num_better_moves = num_player_better_moves + num_opp_player_better_moves
-    total_num_worse_moves = num_player_worse_moves + num_opp_player_worse_moves
+
     weight = 1
-    value = float(own_moves - opp_moves) #/ float(own_moves + opp_moves)
-    if total_num_better_moves != 0:
-        value += float(num_player_better_moves - weight * num_opp_player_better_moves)/total_num_better_moves
-    if total_num_worse_moves != 0:
-        value += float(num_opp_player_worse_moves - weight * num_player_worse_moves)/total_num_worse_moves
-    value += (50 - num_available_spaces) / 100.0
+    value = float(own_moves - opp_moves) / float(own_moves + opp_moves)
+
+    value += float(num_player_better_moves - weight * num_opp_player_better_moves)/num_elements_book_level1
+    value += float(num_opp_player_worse_moves - weight * num_player_worse_moves)/num_elements_corner_spots
+
+    value += (50 - num_available_spaces) / 50.0
 
     return value
 
