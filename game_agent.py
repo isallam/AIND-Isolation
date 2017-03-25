@@ -47,8 +47,6 @@ def pick_good_move(legal_moves):
         picked from the list
 
     """
-    if not legal_moves:
-        return ()
 
     # check open_book_level1 which gives 8 possible next moves
     to_choose_from = list(set(open_book_level1) & set(legal_moves))
@@ -215,19 +213,20 @@ def multi_feature_score(game, player):
     if own_moves == 0:
         return float('-inf')
 
-    num_player_better_moves = len(list(set(open_book_level1) & set(player_legal_moves)))
-    num_player_worse_moves = len(list(set(corner_spots) & set(player_legal_moves)))
-    num_opp_player_better_moves = len(list(set(open_book_level1) & set(opp_player_legal_moves)))
-    num_opp_player_worse_moves = len(list(set(corner_spots) & set(opp_player_legal_moves)))
+    num_player_better_moves = len(list(set(better_moves) & set(player_legal_moves)))
+    num_player_worse_moves = len(list(set(worse_moves) & set(player_legal_moves)))
+    num_opp_player_better_moves = len(list(set(better_moves) & set(opp_player_legal_moves)))
+    num_opp_player_worse_moves = len(list(set(worse_moves) & set(opp_player_legal_moves)))
     num_available_spaces = len(game.get_blank_spaces())
 
-    weight = 1
+    weight = float(game.move_count)/20.0
     value = float(own_moves - opp_moves) / float(own_moves + opp_moves)
 
-    value += float(num_player_better_moves - weight * num_opp_player_better_moves)/num_elements_book_level1
-    value += float(num_opp_player_worse_moves - weight * num_player_worse_moves)/num_elements_corner_spots
+    value += float(weight * num_player_better_moves - weight * num_opp_player_better_moves)/len_better_moves
+    value += float(weight * num_opp_player_worse_moves - weight * num_player_worse_moves)/len_worse_moves
 
-    value += (50 - num_available_spaces) / 50.0
+    # value += (50 - num_available_spaces) / 100.0
+    # value += (game.move_count)/120.0
 
     return value
 
@@ -372,6 +371,13 @@ class CustomPlayer:
         # move from the game board (i.e., an opening book), or returning
         # immediately if there are no legal moves
 
+        if not legal_moves:
+            return (-1, -1)
+
+        # if we have only one legal move, we have no choice, just return it.
+        if len(legal_moves) == 1:
+            return legal_moves[0]
+
         # Check the open book again the legal_moves and keep one handy
         best_move = pick_good_move(legal_moves)
         if game.move_count <= 1:
@@ -390,7 +396,9 @@ class CustomPlayer:
                     if good_move != (-1, -1):
                         best_move = good_move
             else: # no ID
-                _, best_move = getattr(self, self.method)(game, self.search_depth)
+                _, good_move = getattr(self, self.method)(game, self.search_depth)
+                if good_move != (-1, -1):
+                    best_move = good_move
             pass
 
         except Timeout:
